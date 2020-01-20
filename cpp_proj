@@ -1,0 +1,134 @@
+#!/bin/bash
+set -e
+
+if [ -z "$1" ]; then
+	echo "Must supply project name\nex. cpp_proj <proj> <target>"
+	exit 1
+fi
+if [ -z "$2" ]; then
+	echo "Must supply target name\nex. cpp_proj <proj> <target>"
+	exit 1
+fi
+
+printColourized () {
+	#$1 ansi escape sequence colour
+	#$2 is the text to print
+	printf  "$1 ${2} \e[0m"
+}
+
+#relative to root directory
+dirsToMake=("include" "include/$1" "build" "src" "libs")
+#ansi colours
+red=$'\e[1;31m'
+grn=$'\e[1;92m'
+blu=$'\e[1;34m'
+mag=$'\e[1;35m'
+cyn=$'\e[1;36m'
+white=$'\e[0m'
+
+makeDir() {
+	#$1 is relative path of desired directory
+	if [[ -d "$(pwd)/$1" ]]; then
+		printColourized ${cyn}  "$(pwd)/$1"
+		echo -n " exists. Overwrite? [y/N]"
+		read response
+		if [ "$response" = "y" ]; then
+			rm -rf "$(pwd)/$1"
+			mkdir "$(pwd)/$1"
+			echo "overwrote directory"
+		else
+			echo "skipping creation of directory"
+		fi
+	else 
+		mkdir "$(pwd)/$1"
+	fi
+}
+
+makeFile() {
+	#$1 is relative path to desired file
+	#$2 is contents of desired file
+	if [ -f "$(pwd)/$1" ]; then
+		printColourized ${grn}  "$(pwd)/$1"
+		echo -n " exists. Overwrite? [y/N]"
+		read response
+		if [ "$response" = "y" ]; then
+			printf "$2" > $1
+			echo "overwrote file"
+		else
+			echo "skipping creation of file"
+		fi
+	else 
+		printf "$2" > $1
+	fi
+}
+
+#project directory structure
+for directory in ${dirsToMake[@]}; do
+	makeDir $directory
+done
+
+#git ignore
+gitIgnoreBody="build/\n"\
+"compile_commands.json\n"\
+"*.zip"\
+"*.tar"\
+"*.o\n"
+makeFile ".gitignore" $gitIgnoreBody
+chmod ug+w "$(pwd)/.gitignore"
+
+#main file
+mainBody="#include <$1Config.hpp>\n"\
+"int main() {\n}"
+makeFile "$(pwd)/src/main.cpp" "$mainBody"
+
+#config header
+configBody="#cmakedefine $1_VERSION_MAJOR @$1_VERSION_MAJOR@\n"\
+"#cmakedefine $1_VERSION_MINOR @$1_VERSION_MINOR@\n"\
+"#cmakedefine $1_VERSION_PATCH @$1_VERSION_PATCH@"
+
+makeFile "$1Config.hpp.in" "$configBody"
+chmod ug+w "$(pwd)/$1Config.hpp.in"
+
+#cmake
+cmakeVersion=$(cmake --version | grep version | cut -f 3 -d " ")
+cmakeBody="cmake_minimum_required( VERSION $cmakeVersion )\n"\
+"project( $1 VERSION 0 )\n"\
+"\n"\
+"# target\n"\
+"add_executable( $2 ./src/main.cpp )\n"\
+"\n"\
+"configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME}Config.hpp )\n"\
+"target_include_directories( $2 PUBLIC \"${PROJECT_BINARY_DIR}\" )\n"\
+"\n"\
+"# flags\n"\
+"set( TARGET $2 PROPERTY CXX_STANDARD 17 )\n"\
+"set( TARGET $2 PROPERTY CXX_STANDARD_REQUIRED True )\n"\
+"if (CMAKE_CXX_COMPILER_ID STREQUAL \"Clang\")\n"\
+"	target_compile_options( $2 -Wall -Wextra -Werror )\n"\
+"elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"GNU\")\n"\
+"	target_compile_options( $2 PUBLIC -Wall -Wextra -Werror )\n"\
+"elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"Intel\")\n"\
+"#	target_compile_options( $2 -Wall -Wextra -Werror )\n"\
+"elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"MSVC\")\n"\
+"#	target_compile_options( $2 -Wall -Wextra -Werror )\n"\
+"endif()\n"\
+"\n"\
+"# include files\n"\
+"include_directories( ./include ./src )\n"\
+"\n"\
+"# 3rd party libs\n"\
+"\n"\
+"set(CMAKE_EXPORT_COMPILE_COMMANDS ON)"
+
+
+makeFile "CMakeLists.txt" "$cmakeBody"
+chmod ug+w "$(pwd)/CMakeLists.txt"
+
+#call cmake
+cmake -B "$(pwd)/build/"
+if [ ! -f "$(pwd)/compile_commands.json" ]; then
+	ln -s "$(pwd)/build/compile_commands.json" "$(pwd)/compile_commands.json"
+fi
+
+#call git
+git init
