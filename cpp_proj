@@ -2,11 +2,11 @@
 set -e
 
 if [ -z "$1" ]; then
-	echo "Must supply project name\nex. cpp_proj <proj> <target>"
+	echo -e "Must supply project name\nex. cpp_proj <proj> <target>"
 	exit 1
 fi
 if [ -z "$2" ]; then
-	echo "Must supply target name\nex. cpp_proj <proj> <target>"
+	echo -e "Must supply target name\nex. cpp_proj <proj> <target>"
 	exit 1
 fi
 
@@ -68,57 +68,71 @@ for directory in ${dirsToMake[@]}; do
 done
 
 #git ignore
-gitIgnoreBody="build/\n"\
-"compile_commands.json\n"\
-"*.zip"\
-"*.tar"\
-"*.o\n"
+gitIgnoreBody=$(cat <<EOF
+build/
+compile_commands.json
+*.zip
+*.tar
+*.o
+EOF
+)
+
 makeFile ".gitignore" $gitIgnoreBody
 chmod ug+w "$(pwd)/.gitignore"
 
 #main file
-mainBody="#include <$1Config.hpp>\n"\
-"int main() {\n}"
+mainBody=$(cat <<EOF
+#include <$1Config.hpp>
+int main() {
+}
+EOF
+)
 makeFile "$(pwd)/src/main.cpp" "$mainBody"
 
 #config header
-configBody="#cmakedefine $1_VERSION_MAJOR @$1_VERSION_MAJOR@\n"\
-"#cmakedefine $1_VERSION_MINOR @$1_VERSION_MINOR@\n"\
-"#cmakedefine $1_VERSION_PATCH @$1_VERSION_PATCH@"
+configBody=$(cat <<EOF
+#cmakedefine $1_VERSION_MAJOR @$1_VERSION_MAJOR@
+#cmakedefine $1_VERSION_MINOR @$1_VERSION_MINOR@
+#cmakedefine $1_VERSION_PATCH @$1_VERSION_PATCH@
+EOF
+)
 
 makeFile "$1Config.hpp.in" "$configBody"
 chmod ug+w "$(pwd)/$1Config.hpp.in"
 
 #cmake
 cmakeVersion=$(cmake --version | grep version | cut -f 3 -d " ")
-cmakeBody="cmake_minimum_required( VERSION $cmakeVersion )\n"\
-"project( $1 VERSION 0 )\n"\
-"\n"\
-"# target\n"\
-"add_executable( $2 ./src/main.cpp )\n"\
-"\n"\
-"configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME}Config.hpp )\n"\
-"target_include_directories( $2 PUBLIC \"${PROJECT_BINARY_DIR}\" )\n"\
-"\n"\
-"# flags\n"\
-"set( TARGET $2 PROPERTY CXX_STANDARD 17 )\n"\
-"set( TARGET $2 PROPERTY CXX_STANDARD_REQUIRED True )\n"\
-"if (CMAKE_CXX_COMPILER_ID STREQUAL \"Clang\")\n"\
-"	target_compile_options( $2 -Wall -Wextra -Werror )\n"\
-"elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"GNU\")\n"\
-"	target_compile_options( $2 PUBLIC -Wall -Wextra -Werror )\n"\
-"elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"Intel\")\n"\
-"#	target_compile_options( $2 -Wall -Wextra -Werror )\n"\
-"elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"MSVC\")\n"\
-"#	target_compile_options( $2 -Wall -Wextra -Werror )\n"\
-"endif()\n"\
-"\n"\
-"# include files\n"\
-"include_directories( ./include ./src )\n"\
-"\n"\
-"# 3rd party libs\n"\
-"\n"\
-"set(CMAKE_EXPORT_COMPILE_COMMANDS ON)"
+cmakeBody=$(cat <<EOF
+cmake_minimum_required( VERSION $cmakeVersion )
+project( $1 VERSION 0 )
+
+# target
+add_executable( $2 ./src/main.cpp )
+
+configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME}Config.hpp )
+target_include_directories( $2 PUBLIC \"${PROJECT_BINARY_DIR}\" )
+
+# flags
+set( TARGET $2 PROPERTY CXX_STANDARD 17 )
+set( TARGET $2 PROPERTY CXX_STANDARD_REQUIRED True )
+if (CMAKE_CXX_COMPILER_ID STREQUAL \"Clang\")
+	target_compile_options( $2 -Wall -Wextra -Werror )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"GNU\")
+	target_compile_options( $2 PUBLIC -Wall -Wextra -Werror )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"Intel\")
+#	target_compile_options( $2 -Wall -Wextra -Werror )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"MSVC\")
+#	target_compile_options( $2 -Wall -Wextra -Werror )
+endif()
+
+# include files
+include_directories( ./include ./src )
+
+# 3rd party libs
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+EOF
+)
 
 
 makeFile "CMakeLists.txt" "$cmakeBody"
@@ -131,4 +145,13 @@ if [ ! -f "$(pwd)/compile_commands.json" ]; then
 fi
 
 #call git
-git init
+if [ -d ".git" ]; then
+	printColourized ${mag}  ".git"
+	echo -n " exists. Call git init? [y/N]"
+	read response
+	if [ "$response" = "y" ]; then
+		git init
+	fi
+else 
+	git init
+fi
