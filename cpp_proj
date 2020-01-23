@@ -111,7 +111,7 @@ project( $1 VERSION 0 )
 add_executable( $2 ./src/main.cpp )
 
 configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME}Config.hpp )
-target_include_directories( $2 PUBLIC \"${PROJECT_BINARY_DIR}\" )
+target_include_directories( $2 PUBLIC \"\${PROJECT_BINARY_DIR}\" )
 
 # flags
 set( TARGET $2 PROPERTY CXX_STANDARD 17 )
