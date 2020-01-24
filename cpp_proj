@@ -28,7 +28,7 @@ white=$'\e[0m'
 
 makeDir() {
 	#$1 is relative path of desired directory
-	if [[ -d "$(pwd)/$1" ]]; then
+	if [ -d "$(pwd)/$1" ]; then
 		printColourized ${cyn}  "$(pwd)/$1"
 		echo -n " exists. Overwrite? [y/N]"
 		read response
@@ -39,8 +39,9 @@ makeDir() {
 		else
 			echo "skipping creation of directory"
 		fi
-	else 
+	else
 		mkdir "$(pwd)/$1"
+		echo "writing"
 	fi
 }
 
@@ -52,13 +53,13 @@ makeFile() {
 		echo -n " exists. Overwrite? [y/N]"
 		read response
 		if [ "$response" = "y" ]; then
-			printf "$2" > $1
+			echo -e "$2" > $1
 			echo "overwrote file"
 		else
 			echo "skipping creation of file"
 		fi
 	else 
-		printf "$2" > $1
+		echo -e "$2" > $1
 	fi
 }
 
@@ -78,7 +79,7 @@ compile_commands.json
 EOF
 )
 
-makeFile ".gitignore" $gitIgnoreBody
+makeFile ".gitignore" "$gitIgnoreBody"
 chmod ug+w "$(pwd)/.gitignore"
 
 #main file
@@ -88,7 +89,7 @@ int main() {
 }
 EOF
 )
-makeFile "$(pwd)/src/main.cpp" "$mainBody"
+makeFile "src/main.cpp" "$mainBody"
 
 #config header
 configBody=$(cat <<EOF
@@ -111,7 +112,6 @@ project( $1 VERSION 0 )
 add_executable( $2 ./src/main.cpp )
 
 configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME}Config.hpp )
-target_include_directories( $2 PUBLIC \"\${PROJECT_BINARY_DIR}\" )
 
 # flags
 set( TARGET $2 PROPERTY CXX_STANDARD 17 )
@@ -127,7 +127,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"MSVC\")
 endif()
 
 # include files
-include_directories( ./include ./src )
+target_include_directories( $2 PUBLIC \"\${PROJECT_BINARY_DIR}\" \"./include\" \"./src\" )
 
 # 3rd party libs
 
