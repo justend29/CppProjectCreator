@@ -84,7 +84,7 @@ chmod ug+w "$(pwd)/.gitignore"
 
 #main file
 mainBody=$(cat <<EOF
-#include <$1Config.hpp>
+#include "$1Config.hpp"
 int main() {
 }
 EOF
