@@ -127,7 +127,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"MSVC\")
 endif()
 
 # include files
-target_include_directories( $2 PUBLIC \"\${PROJECT_BINARY_DIR}\" \"./include\" \"./src\" )
+target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} ./include ./src )
 
 # 3rd party libs
 
