@@ -114,8 +114,8 @@ add_executable( $2 ./src/main.cpp )
 configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME}Config.hpp )
 
 # flags
-set( TARGET $2 PROPERTY CXX_STANDARD 17 )
-set( TARGET $2 PROPERTY CXX_STANDARD_REQUIRED True )
+set_property( TARGET $2 PROPERTY CXX_STANDARD 17 )
+set_property( TARGET $2 PROPERTY CXX_STANDARD_REQUIRED True )
 if (CMAKE_CXX_COMPILER_ID STREQUAL \"Clang\")
 	target_compile_options( $2 -Wall -Wextra -Werror )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"GNU\")
