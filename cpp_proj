@@ -1,4 +1,5 @@
 #!/bin/bash
+# great cmake resource: http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 set -e
 
 if [ -z "$1" ]; then
@@ -116,13 +117,15 @@ configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME
 # flags
 set_property( TARGET $2 PROPERTY CXX_STANDARD 17 )
 set_property( TARGET $2 PROPERTY CXX_STANDARD_REQUIRED True )
-if (CMAKE_CXX_COMPILER_ID STREQUAL \"Clang\")
+set_property( TARGET $2 PROPERTY CMAKE_BUILD_TYPE Debug )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	target_compile_options( $2 -Wall -Wextra -Werror )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"GNU\")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   target_compile_options( $2 PUBLIC -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast -Woverloaded-virtual -Wsign-promo -Wtemplates)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"Intel\")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 #	target_compile_options( $2 -Wall -Wextra -Werror )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL \"MSVC\")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 #	target_compile_options( $2 -Wall -Wextra -Werror )
 endif()
 
