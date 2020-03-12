@@ -18,7 +18,7 @@ printColourized () {
 }
 
 #relative to root directory
-dirsToMake=("include" "include/$1" "build" "src" "libs" "bin")
+dirsToMake=("include" "include/$1" "build" "src" "libs" "bin" "test")
 #ansi colours
 red=$'\e[1;31m'
 grn=$'\e[1;92m'
@@ -110,7 +110,9 @@ cmake_minimum_required( VERSION $cmakeVersion )
 project( $1 VERSION 0 )
 
 # target
-add_executable( $2 ./src/main.cpp )
+file( GLOB SRCS \${PROJECT_SOURCE_DIR}/src/*.cpp )
+add_executable( $2 \${PROJECT_SOURCE_DIR}/src/main.cpp )
+add_library( $2 STATIC \${SRCS} )
 
 configure_file( \${CMAKE_PROJECT_NAME}-config.hpp.in ../src/\${CMAKE_PROJECT_NAME}-config.hpp )
 
@@ -137,7 +139,10 @@ endif()
 # include files
 target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} ./include ./src )
 
-# 3rd party libs
+# any 3rd party libs? Add here
+
+#enable_testing()
+#add_executable( $1_test test/$mainTest )
 
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
