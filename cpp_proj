@@ -103,6 +103,15 @@ EOF
 makeFile "$1-config.hpp.in" "$configBody"
 chmod ug+w "$(pwd)/$1-config.hpp.in"
 
+#tests
+testFileBody=$(cat <<EOF
+int main() {
+}
+EOF
+)
+testFile="main-test.cpp"
+makeFile "$testFile" "$testFileBody"
+
 #cmake
 cmakeVersion=$(cmake --version | grep version | cut -f 3 -d " ")
 cmakeBody=$(cat <<EOF
@@ -142,7 +151,7 @@ target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} ./include ./src )
 # any 3rd party libs? Add here
 
 #enable_testing()
-#add_executable( $1_test test/$mainTest )
+#add_executable( $1_test test/$testFile )
 
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
