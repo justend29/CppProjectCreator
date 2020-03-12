@@ -25,6 +25,7 @@ grn=$'\e[1;92m'
 blu=$'\e[1;34m'
 mag=$'\e[1;35m'
 cyn=$'\e[1;36m'
+ylw=$'\e[1;33m'
 white=$'\e[0m'
 
 makeDir() {
@@ -72,6 +73,7 @@ done
 #git ignore
 gitIgnoreBody=$(cat <<EOF
 build/
+bin/
 compile_commands.json
 *.zip
 *.tar
@@ -92,6 +94,9 @@ EOF
 )
 makeFile "src/main.cpp" "$mainBody"
 
+#project files
+makeFile "src/$1.cpp" "rename me to what your project needs"
+
 #config header
 configBody=$(cat <<EOF
 #cmakedefine $1_VERSION_MAJOR @$1_VERSION_MAJOR@
@@ -99,7 +104,6 @@ configBody=$(cat <<EOF
 #cmakedefine $1_VERSION_PATCH @$1_VERSION_PATCH@
 EOF
 )
-
 makeFile "$1-config.hpp.in" "$configBody"
 chmod ug+w "$(pwd)/$1-config.hpp.in"
 
@@ -110,18 +114,36 @@ int main() {
 EOF
 )
 testFile="main-test.cpp"
-makeFile "$testFile" "$testFileBody"
+makeFile "test/$testFile" "$testFileBody"
 
 #cmake
 cmakeVersion=$(cmake --version | grep version | cut -f 3 -d " ")
 cmakeBody=$(cat <<EOF
+if( NOT WIN32 )
+  set( BLU "$blu" CACHE STRING "AnsiBlue" )
+  set( RED "$red" CACHE STRING "AnsiRed" )
+  set( MAG "$mag" CACHE STRING "AnsiMagenta" )
+  set( CYN "$cyn" CACHE STRING "AnsiCyan" )
+  set( YLW "$ylw" CACHE STRING "AnsiYellow" )
+  set( WHT "$white" CACHE STRING "AnsiWhite" )
+  function( colourized MESSAGE COL )
+    message( "\${COL}\${MESSAGE}\${WHT}" )
+  endfunction()
+endif()
+
 cmake_minimum_required( VERSION $cmakeVersion )
 project( $1 VERSION 0 )
+colourized( "CMAKE_PROJECT_NAME: \${CMAKE_PROJECT_NAME}" \${MAG})
+colourized( "PROJECT_SOURCE_DIR: \${PROJECT_SOURCE_DIR}" \${MAG})
+colourized( "PROJECT_BINARY_DIR: \${PROJECT_BINARY_DIR}" \${MAG})
 
 # target
-file( GLOB SRCS \${PROJECT_SOURCE_DIR}/src/*.cpp )
-add_executable( $2 \${PROJECT_SOURCE_DIR}/src/main.cpp )
+# glob collection of src files not reliable to regenerate cmake. Manually specify SRCS if fails
+file( GLOB SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS \${PROJECT_SOURCE_DIR}/src/*.cpp )
+list( REMOVE_ITEM SRCS \${PROJECT_SOURCE_DIR}/src/main.cpp )
 add_library( $2 STATIC \${SRCS} )
+add_executable( $2_driver \${PROJECT_SOURCE_DIR}/src/main.cpp )
+target_link_libraries( $2_driver $2 )
 
 configure_file( \${CMAKE_PROJECT_NAME}-config.hpp.in \${PROJECT_SOURCE_DIR}/src/\${CMAKE_PROJECT_NAME}-config.hpp )
 
@@ -132,20 +154,20 @@ set_target_properties( $2
   CXX_STANDARD_REQUIRED True
   ARCHIVE_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
   LIBRARY_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
-  RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
-)
+  RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin" )
 
+set( OPTS "" )
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-	target_compile_options( $2 -Wall -Wextra -Werror )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  target_compile_options( $2 PUBLIC -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast -Woverloaded-virtual -Wsign-promo)
+  set( OPTS "-Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast -Woverloaded-virtual -Wsign-promo" )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-#	target_compile_options( $2 -Wall -Wextra -Werror )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-#	target_compile_options( $2 -Wall -Wextra -Werror )
 endif()
 
-# include files
+colourized( "Compile Options: \${OPTS}" ${YLW})
+# PUBLIC will propogate opts to all linked targets
+target_compile_options( $2 PUBLIC \${OPTS} )
+
 target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} \${PROJECT_SOURCE_DIR}/include \${PROJECT_SOURCE_DIR}/src )
 
 # any 3rd party libs? Add here
