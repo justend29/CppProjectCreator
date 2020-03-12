@@ -18,7 +18,7 @@ printColourized () {
 }
 
 #relative to root directory
-dirsToMake=("include" "include/$1" "build" "src" "libs")
+dirsToMake=("include" "include/$1" "build" "src" "libs" "bin")
 #ansi colours
 red=$'\e[1;31m'
 grn=$'\e[1;92m'
@@ -85,7 +85,7 @@ chmod ug+w "$(pwd)/.gitignore"
 
 #main file
 mainBody=$(cat <<EOF
-#include "$1Config.hpp"
+#include "$1-config.hpp"
 int main() {
 }
 EOF
@@ -100,8 +100,8 @@ configBody=$(cat <<EOF
 EOF
 )
 
-makeFile "$1Config.hpp.in" "$configBody"
-chmod ug+w "$(pwd)/$1Config.hpp.in"
+makeFile "$1-config.hpp.in" "$configBody"
+chmod ug+w "$(pwd)/$1-config.hpp.in"
 
 #cmake
 cmakeVersion=$(cmake --version | grep version | cut -f 3 -d " ")
@@ -112,17 +112,22 @@ project( $1 VERSION 0 )
 # target
 add_executable( $2 ./src/main.cpp )
 
-configure_file( \${CMAKE_PROJECT_NAME}Config.hpp.in ../src/\${CMAKE_PROJECT_NAME}Config.hpp )
+configure_file( \${CMAKE_PROJECT_NAME}-config.hpp.in ../src/\${CMAKE_PROJECT_NAME}-config.hpp )
 
 # flags
-set_property( TARGET $2 PROPERTY CXX_STANDARD 17 )
-set_property( TARGET $2 PROPERTY CXX_STANDARD_REQUIRED True )
-set_property( TARGET $2 PROPERTY CMAKE_BUILD_TYPE Debug )
+set_target_properties( $2
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED True
+  ARCHIVE_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
+  LIBRARY_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
+  RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
+)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	target_compile_options( $2 -Wall -Wextra -Werror )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  target_compile_options( $2 PUBLIC -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast -Woverloaded-virtual -Wsign-promo -Wtemplates)
+  target_compile_options( $2 PUBLIC -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast -Woverloaded-virtual -Wsign-promo)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 #	target_compile_options( $2 -Wall -Wextra -Werror )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
