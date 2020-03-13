@@ -1,5 +1,7 @@
 #!/bin/bash
-# great cmake resource: http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
+# great cmake resources:
+#   http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
+#   https://raymii.org/s/tutorials/Cpp_project_setup_with_cmake_and_unit_tests.html
 set -e
 
 if [ -z "$1" ]; then
@@ -98,7 +100,7 @@ makeFile "src/main.cpp" "$mainBody"
 
 #project files
 if [ "$(ls -1q src/*.cpp | wc -l)" -eq "1" ]; then
-  makeFile "src/$1.cpp" "rename me to what your project needs"
+  makeFile "src/$1.cpp" "// rename me to what your project needs"
 fi
 
 #config header
@@ -113,7 +115,9 @@ chmod ug+w "$(pwd)/$1-config.hpp.in"
 
 #tests
 testFileBody=$(cat <<EOF
-int main() {
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
+TEST_CASE() {
 }
 EOF
 )
@@ -170,14 +174,17 @@ endif()
 
 colourized( "Compile Options: \${OPTS}" \${YLW} )
 # PUBLIC will propogate opts to all linked targets
+separate_arguments(OPTS)
 target_compile_options( $2 PUBLIC \${OPTS} )
 
 target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} \${PROJECT_SOURCE_DIR}/include \${PROJECT_SOURCE_DIR}/src )
 
 # any 3rd party libs? Add here
 
-#enable_testing()
-#add_executable( \${CMAKE_PROJECT_NAME}_test \${PROJECT_SOURCE_DIR}/test/$testFile )
+#using Catch2 testing header
+enable_testing()
+add_executable( \${CMAKE_PROJECT_NAME}_test \${PROJECT_SOURCE_DIR}/test/$testFile )
+add_test( NAME \${CMAKE_PROJECT_NAME}_test COMMAND \${CMAKE_PROJECT_NAME}_test )
 
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
