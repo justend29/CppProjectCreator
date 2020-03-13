@@ -28,7 +28,9 @@ blu=$'\e[1;34m'
 mag=$'\e[1;35m'
 cyn=$'\e[1;36m'
 ylw=$'\e[1;33m'
-white=$'\e[0m'
+wht=$'\e[37m'
+blk=$'\e[30m'
+rst=$'\e[0m'
 
 makeDir() {
 	#$1 is relative path of desired directory
@@ -133,9 +135,11 @@ if( NOT WIN32 )
   set( MAG "$mag" CACHE STRING "AnsiMagenta" )
   set( CYN "$cyn" CACHE STRING "AnsiCyan" )
   set( YLW "$ylw" CACHE STRING "AnsiYellow" )
-  set( WHT "$white" CACHE STRING "AnsiWhite" )
+  set( WHT "$wht" CACHE STRING "AnsiWhite" )
+  set( BLK "$blk" CACHE STRING "AnsiBlack" )
+  set( RST "$rst" CACHE STRING "AnsiReset" )
   function( colourized MESSAGE COL )
-    message( "\${COL}\${MESSAGE}\${WHT}" )
+    message( "\${COL}\${MESSAGE}\${RST}" )
   endfunction()
 endif()
 
@@ -184,6 +188,8 @@ target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} \${PROJECT_SOURCE_D
 #using Catch2 testing header
 enable_testing()
 add_executable( \${CMAKE_PROJECT_NAME}_test \${PROJECT_SOURCE_DIR}/test/$testFile )
+target_compile_options( \${CMAKE_PROJECT_NAME}_test PUBLIC \${OPTS} -H )
+# target_precompile_headers( \${CMAKE_PROJECT_NAME}_test PUBLIC <catch2/catch.hpp> )
 add_test( NAME \${CMAKE_PROJECT_NAME}_test COMMAND \${CMAKE_PROJECT_NAME}_test )
 
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
