@@ -18,7 +18,7 @@ printColourized () {
 }
 
 #relative to root directory
-dirsToMake=("include" "include/$1" "build" "src" "libs" "bin" "test" "doc")
+dirsToMake=("include" "include/$1" "build" "src" "lib" "bin" "test" "doc")
 #ansi colours
 red=$'\e[1;31m'
 grn=$'\e[1;92m'
@@ -81,9 +81,11 @@ compile_commands.json
 *.swp
 EOF
 )
-
 makeFile ".gitignore" "$gitIgnoreBody"
 chmod ug+w "$(pwd)/.gitignore"
+
+#readme
+makeFile "README.md" "# $1"
 
 #main file
 mainBody=$(cat <<EOF
@@ -95,7 +97,9 @@ EOF
 makeFile "src/main.cpp" "$mainBody"
 
 #project files
-makeFile "src/$1.cpp" "rename me to what your project needs"
+if [ "$(ls -1q src/*.cpp | wc -l)" -eq "1" ]; then
+  makeFile "src/$1.cpp" "rename me to what your project needs"
+fi
 
 #config header
 configBody=$(cat <<EOF
@@ -164,7 +168,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
-colourized( "Compile Options: \${OPTS}" ${YLW})
+colourized( "Compile Options: \${OPTS}" \${YLW} )
 # PUBLIC will propogate opts to all linked targets
 target_compile_options( $2 PUBLIC \${OPTS} )
 
