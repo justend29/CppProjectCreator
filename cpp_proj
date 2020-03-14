@@ -1,8 +1,20 @@
 #!/bin/bash
 # great cmake resources:
 #   http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
+#   https://cliutils.gitlab.io/modern-cmake/chapters/basics/structure.html
 #   https://raymii.org/s/tutorials/Cpp_project_setup_with_cmake_and_unit_tests.html
-set -e
+
+mitLicense=$(cat <<EOF
+Copyright <YEAR> <COPYRIGHT HOLDER>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+EOF
+)
+
 
 if [ -z "$1" ]; then
 	echo -e "Must supply project name\nex. cpp_proj <proj> <target>"
@@ -13,14 +25,6 @@ if [ -z "$2" ]; then
 	exit 1
 fi
 
-printColourized () {
-	#$1 ansi escape sequence colour
-	#$2 is the text to print
-	printf  "$1 ${2} \e[0m"
-}
-
-#relative to root directory
-dirsToMake=("include" "include/$1" "build" "src" "lib" "bin" "test" "doc")
 #ansi colours
 red=$'\e[1;31m'
 grn=$'\e[1;92m'
@@ -31,6 +35,15 @@ ylw=$'\e[1;33m'
 wht=$'\e[37m'
 blk=$'\e[30m'
 rst=$'\e[0m'
+
+printColourized () {
+	#$1 ansi escape sequence colour
+	#$2 is the text to print
+	printf  "$1 ${2} $rst"
+}
+
+#relative to root directory
+dirsToMake=("include" "include/$1" "build" "src" "lib" "bin" "test" "docs" "cmake" "external" "app" )
 
 makeDir() {
 	#$1 is relative path of desired directory
@@ -88,8 +101,51 @@ EOF
 makeFile ".gitignore" "$gitIgnoreBody"
 chmod ug+w "$(pwd)/.gitignore"
 
-#readme
-makeFile "README.md" "# $1"
+#README
+# project readme
+readmeBody=$(cat <<EOF 
+  # $1
+  ## Project Layout
+  * **cmake directory** For git submodules
+  * **external directory** For CMake modules
+  * **app directory** For the project application
+  An initial *main.cpp* file has been populated in this directory
+  and is treated as a driver program in app/CMakeLists.txt
+  for the other sources, which are bound as a static library
+  * **include directory** For publically facing header files
+  * **src directory** For the project's source files not in the app
+  directory and the private header files. The sources here generate 
+  a static library and are linked to the driver program in app.
+  src/CMakeLists.txt and app/CMakeLists.txt define these processes
+  * **lib directory** For libraries compiled by the project, including
+  that generated from the sources in src/
+  * **build directory** For the build specific files
+
+  Go update the LICENCE.md file with a preferred holder name.
+EOF
+)
+makeFile "README.md" "$readmeBody"
+
+# licence
+year=$(date +"%Y")
+mitLicense=$(echo $mitLicense | sed --expression "s/<YEAR>/$year/")
+mitLicense=$(echo $mitLicense | sed --expression "s/<COPYRIGHT HOLDER>/$USER/")
+readmeBody=$(cat <<EOF
+  # $1 - License
+  $mitLicense
+EOF
+)
+makeFile "LICENCE.md" "$readmeBody"
+
+#tests
+testFileBody=$(cat <<EOF
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
+// don't write any test cases here
+// https://github.com/catchorg/Catch2/blob/master/docs/slow-compiles.md
+EOF
+)
+makeFile "test/main-test.cpp" "$testFileBody"
 
 #main file
 mainBody=$(cat <<EOF
@@ -98,35 +154,30 @@ int main() {
 }
 EOF
 )
-makeFile "src/main.cpp" "$mainBody"
+makeFile "app/main.cpp" "$mainBody"
 
 #project files
-if [ "$(ls -1q src/*.cpp | wc -l)" -eq "1" ]; then
+LS=$(ls -1q src/*.cpp > /dev/null 2>&1)
+if [ $? -ne 0 ]; then # no *.cpp files found
   makeFile "src/$1.cpp" "// rename me to what your project needs"
 fi
 
 #config header
+projectUpper=$(echo $1 | tr a-z A-Z)
 configBody=$(cat <<EOF
-#cmakedefine $1_VERSION_MAJOR @$1_VERSION_MAJOR@
-#cmakedefine $1_VERSION_MINOR @$1_VERSION_MINOR@
-#cmakedefine $1_VERSION_PATCH @$1_VERSION_PATCH@
-EOF
-)
-makeFile "$1-config.hpp.in" "$configBody"
-chmod ug+w "$(pwd)/$1-config.hpp.in"
+#pragma once 
 
-#tests
-testFileBody=$(cat <<EOF
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
-TEST_CASE() {
-}
+#define $projectUpper_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define $projectUpper_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define $projectUpper_VERSION_PATCH @PROJCET_VERSION_PATCH@
+#define $projectUpper_VERSION      "@PROJECT_VERSION@"
 EOF
 )
-testFile="main-test.cpp"
-makeFile "test/$testFile" "$testFileBody"
+makeFile "cmake/$1-config.hpp.in" "$configBody"
+chmod ug+w "$(pwd)/cmake/$1-config.hpp.in"
 
 #cmake
+# cmake project
 cmakeVersion=$(cmake --version | grep version | cut -f 3 -d " ")
 cmakeBody=$(cat <<EOF
 if( NOT WIN32 )
@@ -144,61 +195,219 @@ if( NOT WIN32 )
 endif()
 
 cmake_minimum_required( VERSION $cmakeVersion )
-project( $1 VERSION 0 )
-colourized( "CMAKE_PROJECT_NAME: \${CMAKE_PROJECT_NAME}" \${MAG})
-colourized( "PROJECT_SOURCE_DIR: \${PROJECT_SOURCE_DIR}" \${MAG})
-colourized( "PROJECT_BINARY_DIR: \${PROJECT_BINARY_DIR}" \${MAG})
+project( $1 VERSION 0 
+            DESCRIPTION "$1"
+            LANGUAGES CXX )
+colourized( "CMAKE_PROJECT_NAME: \${CMAKE_PROJECT_NAME}" \${MAG} )
+colourized( "PROJECT_NAME: \${PROJECT_BINARY_DIR}" \${MAG} )
+colourized( "PROJECT_SOURCE_DIR: \${PROJECT_SOURCE_DIR}" \${MAG} )
+colourized( "PROJECT_BINARY_DIR: \${PROJECT_BINARY_DIR}" \${MAG} )
 
-# target
-# glob collection of src files not reliable to regenerate cmake. Manually specify SRCS if fails
-file( GLOB SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS \${PROJECT_SOURCE_DIR}/src/*.cpp )
-list( REMOVE_ITEM SRCS \${PROJECT_SOURCE_DIR}/src/main.cpp )
-add_library( $2 STATIC \${SRCS} )
-add_executable( $2_driver \${PROJECT_SOURCE_DIR}/src/main.cpp )
-target_link_libraries( $2_driver $2 )
+# Only if this is main project, not included through add_subdirectory
+if( CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME )
 
-configure_file( \${CMAKE_PROJECT_NAME}-config.hpp.in \${PROJECT_SOURCE_DIR}/src/\${CMAKE_PROJECT_NAME}-config.hpp )
+  # append path to search for cmake modules
+  set( CMAKE_MODULE_PATH "\${PROJECT_SOURCE_DIR}/cmake" \${CMAKE_MODULE_PATH} )
 
-# flags
-set_target_properties( $2
-  PROPERTIES
-  CXX_STANDARD 17
-  CXX_STANDARD_REQUIRED True
-  ARCHIVE_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
-  LIBRARY_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
-  RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin" )
+  # support IDE folders
+  set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 
-set( OPTS "" )
+  # turn off compiler specific extensions
+  set( CMAKE_CXX_EXTENSIONS OFF )
+
+  # must be done in main CMakeLists
+  # enables testing and provides BUILD_TESTING option
+  include( CTest )
+
+  find_package( Doxygen )
+  if( Doxygen_FOUND )
+    add_subdirectory( docs )
+  else()
+    message( STATUS "Doxygen not found, not building docs" )
+  endif()
+
+endif()
+
+include( FetchContent ) 
+if( \${CMAKE_VERSION} VERSION_LESS 3.14 )
+  include( cmake/add_FetchContent_MakeAvailable.cmake )
+endif()
+
+FetchContent_Declare(
+  fmtlib
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG 5.3.0
+  #<name>
+  #GIT_REPOSITORY <repo-url>
+  #GIT_TAG        <tag>
+)
+FetchContent_MakeAvailable(
+  fmtlib
+  #<name>
+)
+
+if( (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) AND BUILD_TESTING)
+    add_subdirectory( test )
+endif()
+
+# library code to compile
+add_subdirectory( src )
+
+# application code to compile
+add_subdirectory( app )
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set( OPTS "-Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast -Woverloaded-virtual -Wsign-promo" )
+  set( OPTS -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime
+            -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast 
+            -Woverloaded-virtual -Wsign-promo )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
-
 colourized( "Compile Options: \${OPTS}" \${YLW} )
-# PUBLIC will propogate opts to all linked targets
-separate_arguments(OPTS)
-target_compile_options( $2 PUBLIC \${OPTS} )
 
-target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} \${PROJECT_SOURCE_DIR}/include \${PROJECT_SOURCE_DIR}/src )
+configure_file( 
+  \${PROJECT_SOURCE_DIR}/cmake/\${CMAKE_PROJECT_NAME}-config.hpp.in
+  \${PROJECT_SOURCE_DIR}/src/\${CMAKE_PROJECT_NAME}-config.hpp
+)
 
-# any 3rd party libs? Add here
-
-#using Catch2 testing header
-enable_testing()
-add_executable( \${CMAKE_PROJECT_NAME}_test \${PROJECT_SOURCE_DIR}/test/$testFile )
-target_compile_options( \${CMAKE_PROJECT_NAME}_test PUBLIC \${OPTS} -H )
-# target_precompile_headers( \${CMAKE_PROJECT_NAME}_test PUBLIC <catch2/catch.hpp> )
-add_test( NAME \${CMAKE_PROJECT_NAME}_test COMMAND \${CMAKE_PROJECT_NAME}_test )
+# any 3rd party libs?
+# any precompiled headers?
+# target_precompile_headers( <target> PRIVATE <headers> )
 
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
 )
-
-
 makeFile "CMakeLists.txt" "$cmakeBody"
 chmod ug+w "$(pwd)/CMakeLists.txt"
+
+# cmake src
+cmakeBody=$(cat <<EOF
+# glob collection of src files not 100% reliable
+file( GLOB_RECURSE SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS *.cpp )
+
+# if there is a main.cpp, remove it
+list( REMOVE_ITEM SRCS \${PROJECT_SOURCE_DIR}/src/main.cpp )
+
+# headers won't affect library but will let IDEs find them
+file( GLOB_RECURSE HEADERS LIST_DIRECTORIES false CONFIGURE_DEPENDS
+      "*.hpp" "\${PROJECT_SOURCE_DIR}/include/\${PROJECT_NAME}/*.hpp" )
+colourized( "Compile Options: \${OPTS}" \${YLW} )
+
+# only run if source files were found
+list( LENGTH SRCS HAS_SOURCES )
+if( \${HAS_SOURCES} GREATER 0 )
+  add_library( $2 STATIC \${HEADERS} \${SRCS} )
+
+  set_target_properties( $2
+    PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED True
+    ARCHIVE_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
+  )
+
+  colourized( "Compile Options: \${OPTS}" \${YLW} )
+  # PUBLIC will propogate opts to all linked targets
+  target_compile_options( $2 PUBLIC \${OPTS} )
+
+  target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} \${PROJECT_SOURCE_DIR}/include \${PROJECT_SOURCE_DIR}/src )
+endif()
+EOF
+)
+makeFile "src/CMakeLists.txt" "$cmakeBody"
+chmod ug+w "$(pwd)/src/CMakeLists.txt"
+
+#cmake app
+cmakeBody=$(cat <<EOF
+set( TARGET_APP \${PROJECT_NAME}_driver )
+
+file( GLOB_RECURSE APP_SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS *.cpp )
+
+# only run if sources were found 
+list( LENGTH APP_SRCS HAS_SOURCES )
+if( \${HAS_SOURCES} GREATER 0 )
+
+  add_executable( \${TARGET_APP} \${APP_SRCS} )
+
+  set_target_properties( \${TARGET_APP}
+    PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED True
+    ARCHIVE_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
+  )
+
+  target_link_libraries( \${TARGET_APP} PRIVATE $2 )
+
+endif()
+EOF
+)
+makeFile "app/CMakeLists.txt" "$cmakeBody"
+chmod ug+w "$(pwd)/src/CMakeLists.txt"
+
+#cmake test
+cmakeBody=$(cat <<EOF
+set( TARGET_TEST \${CMAKE_PROJECT_NAME}_TEST )
+
+#using Catch2 testing header
+FetchContent_Declare(
+  catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG v2.11.1
+)
+FetchContent_MakeAvailable( catch2 )
+
+file( GLOB_RECURSE TEST_SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS *.cpp )
+
+# only run if there are sources
+list( LENGTH TEST_SRCS HAS_SOURCES )
+if( \${HAS_SOURCES} GREATER 0 )
+
+  add_executable( \${TARGET_TEST} \${TEST_SRCS} )
+
+  # can use different options that the rest of the lib
+  colourized( "Compile Options: \${OPTS}" \${YLW} )
+  target_compile_options( \${TARGET_TEST} PUBLIC \${OPTS} )
+
+  set_target_properties( \${TARGET_TEST}
+    PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED True
+    RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
+  )
+
+  #target_link_libraries( \${TARGET_TEST} PRIVATE ... )
+
+  add_test( NAME \${CMAKE_PROJECT_NAME}_test COMMAND \${TARGET_TEST} )
+
+endif()
+EOF
+)
+makeFile "test/CMakeLists.txt" "$cmakeBody"
+chmod ug+w "$(pwd)/test/CMakeLists.txt"
+
+#cmake docs
+cmakeBody=$(cat <<EOF
+set( DOXYGEN_EXTRACT_ALL YES )
+set( DOXYGEN_BUILTIN_STL_SUPPORT YES )
+
+file( GLOB_RECURSE PUBLIC_HEADERS LIST_DIRECTORIES false CONFIGURE_DEPENDS \${PROJECT_SOURCE_DIR}/include/\${PROJECT_NAME}/*.hpp )
+
+doxygen_add_docs( docs
+  \${PUBLIC_HEADERS}
+  "\${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
+  WORKING_DIRECTORY
+  "\${PROJECT_SOURCE_DIR}/include"
+)
+EOF
+)
+makeFile "docs/CMakeLists.txt" "$cmakeBody"
+chmod ug+w "$(pwd)/docs/CMakeLists.txt"
+
+
 
 #call cmake
 cmake -B "$(pwd)/build/"
