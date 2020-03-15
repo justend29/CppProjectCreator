@@ -5,12 +5,14 @@
 #   https://raymii.org/s/tutorials/Cpp_project_setup_with_cmake_and_unit_tests.html
 
 mitLicense=$(cat <<EOF
+MIT License
+\n\n
 Copyright <YEAR> <COPYRIGHT HOLDER>
-
+\n\n
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
+\n\n
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
+\n\n
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 EOF
 )
@@ -101,11 +103,47 @@ EOF
 makeFile ".gitignore" "$gitIgnoreBody"
 chmod ug+w "$(pwd)/.gitignore"
 
+echo made git ignore
+
 #README
 # project readme
-readmeBody=$(cat <<EOF 
+readmeBody="$(cat <<EOF 
   # $1
+
+  ## Notes
+
+  By default, the Ninja build system and Catch2 test framework
+  are used by this script. Catch2 will automatically be installed.
+
+  ## Building
+
+  **Running CMake** (Done initially by script)
+
+  \`\`\`bash
+  $ cmake -B ./build/ -GNinja
+  \`\`\`
+
+  **Compiling With Ninja**
+
+  \`\`\`bash
+  $ ninja -C ./build/
+  \`\`\`
+
+  **Running Catch2 Tests**
+
+  \`\`\`bash
+
+  $ ninja -C ./build/ test
+  \`\`\`
+
+  **Running Driver Program**
+
+  \`\`\`bash
+  $ ./bin/<proj_name>_driver
+  \`\`\`
+
   ## Project Layout
+
   * **cmake directory** For git submodules
   * **external directory** For CMake modules
   * **app directory** For the project application
@@ -121,10 +159,18 @@ readmeBody=$(cat <<EOF
   that generated from the sources in src/
   * **build directory** For the build specific files
 
-  Go update the LICENCE.md file with a preferred holder name.
+  Go update the LICENCE.md file with a preferred copywrite holder name if 
+  the default one is insufficient
+
+  ## Great CMake Resources
+
+  * [modern cmake](https://cliutils.gitlab.io/modern-cmake/chapters/basics/structure.html)
+  * [quick cheat-sheet](http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html)
+  * [basic project example](https://raymii.org/s/tutorials/Cpp_project_setup_with_cmake_and_unit_tests.html)
 EOF
-)
+)"
 makeFile "README.md" "$readmeBody"
+echo readme made
 
 # licence
 year=$(date +"%Y")
@@ -167,10 +213,10 @@ projectUpper=$(echo $1 | tr a-z A-Z)
 configBody=$(cat <<EOF
 #pragma once 
 
-#define $projectUpper_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define $projectUpper_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define $projectUpper_VERSION_PATCH @PROJCET_VERSION_PATCH@
-#define $projectUpper_VERSION      "@PROJECT_VERSION@"
+#define ${projectUpper}_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define ${projectUpper}_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define ${projectUpper}_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define ${projectUpper}_VERSION      "@PROJECT_VERSION@"
 EOF
 )
 makeFile "cmake/$1-config.hpp.in" "$configBody"
@@ -195,7 +241,7 @@ if( NOT WIN32 )
 endif()
 
 cmake_minimum_required( VERSION $cmakeVersion )
-project( $1 VERSION 0 
+project( $1 VERSION 0.0.0 
             DESCRIPTION "$1"
             LANGUAGES CXX )
 colourized( "CMAKE_PROJECT_NAME: \${CMAKE_PROJECT_NAME}" \${MAG} )
@@ -228,23 +274,31 @@ if( CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME )
 
 endif()
 
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set( OPTS -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime
+            -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast 
+            -Woverloaded-virtual -Wsign-promo )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+endif()
+#currently set so everything uses same options
+colourized( "Compile Options: \${OPTS}" \${YLW} )
+
 include( FetchContent ) 
 if( \${CMAKE_VERSION} VERSION_LESS 3.14 )
   include( cmake/add_FetchContent_MakeAvailable.cmake )
 endif()
 
-FetchContent_Declare(
-  fmtlib
-  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG 5.3.0
+#FetchContent_Declare(
   #<name>
   #GIT_REPOSITORY <repo-url>
   #GIT_TAG        <tag>
-)
-FetchContent_MakeAvailable(
-  fmtlib
+#)
+#FetchContent_MakeAvailable(
   #<name>
-)
+#)
 
 if( (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) AND BUILD_TESTING)
     add_subdirectory( test )
@@ -255,16 +309,6 @@ add_subdirectory( src )
 
 # application code to compile
 add_subdirectory( app )
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set( OPTS -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime
-            -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast 
-            -Woverloaded-virtual -Wsign-promo )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-endif()
-colourized( "Compile Options: \${OPTS}" \${YLW} )
 
 configure_file( 
   \${PROJECT_SOURCE_DIR}/cmake/\${CMAKE_PROJECT_NAME}-config.hpp.in
@@ -292,7 +336,6 @@ list( REMOVE_ITEM SRCS \${PROJECT_SOURCE_DIR}/src/main.cpp )
 # headers won't affect library but will let IDEs find them
 file( GLOB_RECURSE HEADERS LIST_DIRECTORIES false CONFIGURE_DEPENDS
       "*.hpp" "\${PROJECT_SOURCE_DIR}/include/\${PROJECT_NAME}/*.hpp" )
-colourized( "Compile Options: \${OPTS}" \${YLW} )
 
 # only run if source files were found
 list( LENGTH SRCS HAS_SOURCES )
@@ -308,7 +351,6 @@ if( \${HAS_SOURCES} GREATER 0 )
     RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
   )
 
-  colourized( "Compile Options: \${OPTS}" \${YLW} )
   # PUBLIC will propogate opts to all linked targets
   target_compile_options( $2 PUBLIC \${OPTS} )
 
@@ -350,7 +392,7 @@ chmod ug+w "$(pwd)/src/CMakeLists.txt"
 
 #cmake test
 cmakeBody=$(cat <<EOF
-set( TARGET_TEST \${CMAKE_PROJECT_NAME}_TEST )
+set( TARGET_TEST \${CMAKE_PROJECT_NAME}_test )
 
 #using Catch2 testing header
 FetchContent_Declare(
@@ -369,7 +411,7 @@ if( \${HAS_SOURCES} GREATER 0 )
   add_executable( \${TARGET_TEST} \${TEST_SRCS} )
 
   # can use different options that the rest of the lib
-  colourized( "Compile Options: \${OPTS}" \${YLW} )
+  #colourized( "Test Compile Options: \${OPTS}" \${YLW} )
   target_compile_options( \${TARGET_TEST} PUBLIC \${OPTS} )
 
   set_target_properties( \${TARGET_TEST}
@@ -379,9 +421,9 @@ if( \${HAS_SOURCES} GREATER 0 )
     RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
   )
 
-  #target_link_libraries( \${TARGET_TEST} PRIVATE ... )
+  target_link_libraries( \${TARGET_TEST} PRIVATE $2 Catch2::Catch2 )
 
-  add_test( NAME \${CMAKE_PROJECT_NAME}_test COMMAND \${TARGET_TEST} )
+  add_test( NAME \${TARGET_TEST} COMMAND \${TARGET_TEST} )
 
 endif()
 EOF
@@ -409,8 +451,8 @@ chmod ug+w "$(pwd)/docs/CMakeLists.txt"
 
 
 
-#call cmake
-cmake -B "$(pwd)/build/"
+#call cmake w/ ninja build sys
+cmake -B "$(pwd)/build/" -GNinja
 if [ ! -f "$(pwd)/compile_commands.json" ]; then
 	ln -s "$(pwd)/build/compile_commands.json" "$(pwd)/compile_commands.json"
 fi
