@@ -19,12 +19,12 @@ EOF
 
 
 if [ -z "$1" ]; then
-	echo -e "Must supply project name\nex. cpp_proj <proj> <target>"
-	exit 1
+  echo -e "Must supply project name\nex. cpp_proj <proj> <target>"
+  exit 1
 fi
 if [ -z "$2" ]; then
-	echo -e "Must supply target name\nex. cpp_proj <proj> <target>"
-	exit 1
+  echo -e "Must supply target name\nex. cpp_proj <proj> <target>"
+  exit 1
 fi
 
 #ansi colours
@@ -39,55 +39,59 @@ blk=$'\e[30m'
 rst=$'\e[0m'
 
 printColourized () {
-	#$1 ansi escape sequence colour
-	#$2 is the text to print
-	printf  "$1 ${2} $rst"
+  #$1 ansi escape sequence colour
+  #$2 is the text to print
+  printf  "$1 ${2} $rst"
 }
 
 #relative to root directory
 dirsToMake=("include" "include/$1" "build" "src" "lib" "bin" "test" "docs" "cmake" "external" "app" )
 
 makeDir() {
-	#$1 is relative path of desired directory
-	if [ -d "$(pwd)/$1" ]; then
-		printColourized ${cyn}  "$(pwd)/$1"
-		echo -n " exists. Overwrite? [y/N]"
-		read response
-		if [ "$response" = "y" ]; then
-			rm -rf "$(pwd)/$1"
-			mkdir "$(pwd)/$1"
-			echo "overwrote directory"
-		else
-			echo "skipping creation of directory"
-		fi
-	else
-		mkdir "$(pwd)/$1"
-		echo "writing"
-	fi
+  #$1 is relative path of desired directory
+  if [ -d "$(pwd)/$1" ]; then
+    printColourized ${cyn}  "$(pwd)/$1"
+    echo -n " exists. Overwrite? [y/N]"
+    read response
+    if [ "$response" = "y" ]; then
+      rm -rf "$(pwd)/$1"
+      mkdir "$(pwd)/$1"
+      echo "overwrote directory"
+    else
+      echo "skipping creation of directory"
+    fi
+  else
+    mkdir "$(pwd)/$1"
+    echo "writing"
+  fi
 }
 
 makeFile() {
-	#$1 is relative path to desired file
-	#$2 is contents of desired file
-	if [ -f "$(pwd)/$1" ]; then
-		printColourized ${grn}  "$(pwd)/$1"
-		echo -n " exists. Overwrite? [y/N]"
-		read response
-		if [ "$response" = "y" ]; then
-			echo -e "$2" > $1
-			echo "overwrote file"
-		else
-			echo "skipping creation of file"
-		fi
-	else 
-		echo -e "$2" > $1
-	fi
+  #$1 is relative path to desired file
+  #$2 is contents of desired file
+  if [ -f "$(pwd)/$1" ]; then
+    printColourized ${grn}  "$(pwd)/$1"
+    echo -n " exists. Overwrite? [y/N]"
+    read response
+    if [ "$response" = "y" ]; then
+      echo -e "$2" > $1
+      echo "overwrote file"
+    else
+      echo "skipping creation of file"
+    fi
+  else
+    echo -e "$2" > $1
+  fi
 }
 
 #project directory structure
 for directory in ${dirsToMake[@]}; do
-	makeDir $directory
+  makeDir $directory
 done
+
+#clang-format file
+makeFile ".clang-format" "$(clang-format -style=google -dump-config)"
+> .clang-format
 
 #git ignore
 gitIgnoreBody=$(cat <<EOF
@@ -107,7 +111,7 @@ echo made git ignore
 
 #README
 # project readme
-readmeBody="$(cat <<EOF 
+readmeBody="$(cat <<EOF
   # $1
 
   ## Notes
@@ -152,14 +156,14 @@ readmeBody="$(cat <<EOF
   for the other sources, which are bound as a static library
   * **include directory** For publically facing header files
   * **src directory** For the project's source files not in the app
-  directory and the private header files. The sources here generate 
+  directory and the private header files. The sources here generate
   a static library and are linked to the driver program in app.
   src/CMakeLists.txt and app/CMakeLists.txt define these processes
   * **lib directory** For libraries compiled by the project, including
   that generated from the sources in src/
   * **build directory** For the build specific files
 
-  Go update the LICENCE.md file with a preferred copywrite holder name if 
+  Go update the LICENCE.md file with a preferred copywrite holder name if
   the default one is insufficient
 
   ## Great CMake Resources
@@ -209,10 +213,8 @@ if [ $? -ne 0 ]; then # no *.cpp files found
 fi
 
 #config header
-projectUpper=$(echo $1 | tr a-z A-Z)
+projectUpper=$(echo $1 | tr a-z A-Z | tr - _)
 configBody=$(cat <<EOF
-#pragma once 
-
 #define ${projectUpper}_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
 #define ${projectUpper}_VERSION_MINOR @PROJECT_VERSION_MINOR@
 #define ${projectUpper}_VERSION_PATCH @PROJECT_VERSION_PATCH@
@@ -241,7 +243,7 @@ if( NOT WIN32 )
 endif()
 
 cmake_minimum_required( VERSION $cmakeVersion )
-project( $1 VERSION 0.0.0 
+project( $1 VERSION 0.0.0
             DESCRIPTION "$1"
             LANGUAGES CXX )
 colourized( "CMAKE_PROJECT_NAME: \${CMAKE_PROJECT_NAME}" \${MAG} )
@@ -278,7 +280,7 @@ endif()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set( OPTS -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime
-            -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast 
+            -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast
             -Woverloaded-virtual -Wsign-promo )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -286,7 +288,7 @@ endif()
 #currently set so everything uses same options
 colourized( "Compile Options: \${OPTS}" \${YLW} )
 
-include( FetchContent ) 
+include( FetchContent )
 if( \${CMAKE_VERSION} VERSION_LESS 3.14 )
   include( cmake/add_FetchContent_MakeAvailable.cmake )
 endif()
@@ -310,7 +312,7 @@ add_subdirectory( src )
 # application code to compile
 add_subdirectory( app )
 
-configure_file( 
+configure_file(
   \${PROJECT_SOURCE_DIR}/cmake/\${CMAKE_PROJECT_NAME}-config.hpp.in
   \${PROJECT_SOURCE_DIR}/src/\${CMAKE_PROJECT_NAME}-config.hpp
 )
@@ -367,7 +369,7 @@ set( TARGET_APP \${PROJECT_NAME}_driver )
 
 file( GLOB_RECURSE APP_SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS *.cpp )
 
-# only run if sources were found 
+# only run if sources were found
 list( LENGTH APP_SRCS HAS_SOURCES )
 if( \${HAS_SOURCES} GREATER 0 )
 
@@ -454,17 +456,17 @@ chmod ug+w "$(pwd)/docs/CMakeLists.txt"
 #call cmake w/ ninja build sys
 cmake -B "$(pwd)/build/" -GNinja
 if [ ! -f "$(pwd)/compile_commands.json" ]; then
-	ln -s "$(pwd)/build/compile_commands.json" "$(pwd)/compile_commands.json"
+  ln -s "$(pwd)/build/compile_commands.json" "$(pwd)/compile_commands.json"
 fi
 
 #call git
 if [ -d ".git" ]; then
-	printColourized ${mag}  ".git"
-	echo -n " exists. Call git init? [y/N]"
-	read response
-	if [ "$response" = "y" ]; then
-		git init
-	fi
-else 
-	git init
+  printColourized ${mag}  ".git"
+  echo -n " exists. Call git init? [y/N]"
+  read response
+  if [ "$response" = "y" ]; then
+    git init
+  fi
+else
+  git init
 fi

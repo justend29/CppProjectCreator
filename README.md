@@ -9,12 +9,12 @@ $ cd <location to install>
 $ git clone https://github.com/justend29/CppProjectCreator.git
 $ cd CppProjectCreator
 $ chmod ug+x cpp_proj
-# ln -s <location you installed>/CppProjectCreator/cpp_proj /usr/local/bin/cpp_proj
+\# ln -s <location you installed>/CppProjectCreator/cpp_proj /usr/local/bin/cpp_proj
 ```
 
 ## Requirements
 
-####Of course you're using arch/manjaro linux*  
+**Of course you're using arch/manjaro linux**
 
 1. Get CMake
 
@@ -31,8 +31,7 @@ $ yay -S ninja
 ## Run script
 
 ```bash
-$cpp_proj <proj> <target>
-
+$ cpp_proj <proj> <target>
 ```
 
 ## Great CMake Resources
