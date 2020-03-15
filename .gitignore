@@ -1,0 +1,7 @@
+build/
+bin/
+compile_commands.json
+*.zip
+*.tar
+*.o
+*.swp

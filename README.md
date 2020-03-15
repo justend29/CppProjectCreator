@@ -9,7 +9,7 @@ $ cd <location to install>
 $ git clone https://github.com/justend29/CppProjectCreator.git
 $ cd CppProjectCreator
 $ chmod ug+x cpp_proj
-\# ln -s <location you installed>/CppProjectCreator/cpp_proj /usr/local/bin/cpp_proj
+$ sudo ln -s <location you installed>/CppProjectCreator/cpp_proj /usr/local/bin/cpp_proj
 ```
 
 ## Requirements
@@ -33,6 +33,7 @@ $ yay -S ninja
 ```bash
 $ cpp_proj <proj> <target>
 ```
+Subsequent runs will ask before modifying
 
 ## Great CMake Resources
 
@@ -43,4 +44,5 @@ $ cpp_proj <proj> <target>
 ## TODO
 
 * Add default cmake install rules
+* Add conan support
 * Get rid of the single giant, gross script

@@ -91,7 +91,6 @@ done
 
 #clang-format file
 makeFile ".clang-format" "$(clang-format -style=google -dump-config)"
-> .clang-format
 
 #git ignore
 gitIgnoreBody=$(cat <<EOF
@@ -228,24 +227,12 @@ chmod ug+w "$(pwd)/cmake/$1-config.hpp.in"
 # cmake project
 cmakeVersion=$(cmake --version | grep version | cut -f 3 -d " ")
 cmakeBody=$(cat <<EOF
-if( NOT WIN32 )
-  set( BLU "$blu" CACHE STRING "AnsiBlue" )
-  set( RED "$red" CACHE STRING "AnsiRed" )
-  set( MAG "$mag" CACHE STRING "AnsiMagenta" )
-  set( CYN "$cyn" CACHE STRING "AnsiCyan" )
-  set( YLW "$ylw" CACHE STRING "AnsiYellow" )
-  set( WHT "$wht" CACHE STRING "AnsiWhite" )
-  set( BLK "$blk" CACHE STRING "AnsiBlack" )
-  set( RST "$rst" CACHE STRING "AnsiReset" )
-  function( colourized MESSAGE COL )
-    message( "\${COL}\${MESSAGE}\${RST}" )
-  endfunction()
-endif()
-
 cmake_minimum_required( VERSION $cmakeVersion )
 project( $1 VERSION 0.0.0
             DESCRIPTION "$1"
             LANGUAGES CXX )
+
+include( cmake/colourized.cmake )
 colourized( "CMAKE_PROJECT_NAME: \${CMAKE_PROJECT_NAME}" \${MAG} )
 colourized( "PROJECT_NAME: \${PROJECT_BINARY_DIR}" \${MAG} )
 colourized( "PROJECT_SOURCE_DIR: \${PROJECT_SOURCE_DIR}" \${MAG} )
@@ -358,6 +345,8 @@ if( \${HAS_SOURCES} GREATER 0 )
 
   target_include_directories( $2 PUBLIC \${PROJECT_BINARY_DIR} \${PROJECT_SOURCE_DIR}/include \${PROJECT_SOURCE_DIR}/src )
 endif()
+
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
 )
 makeFile "src/CMakeLists.txt" "$cmakeBody"
@@ -384,9 +373,13 @@ if( \${HAS_SOURCES} GREATER 0 )
     RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
   )
 
+  target_link_directories( \${TARGET_APP} PRIVATE \${PROJECT_SOURCE_DIR}/lib )
+  target_include_directories( \${TARGET_APP} PRIVATE \${PROJECT_SOURCE_DIR}/src \${PROJECT_SOURCE_DIR/include )
   target_link_libraries( \${TARGET_APP} PRIVATE $2 )
 
 endif()
+
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
 )
 makeFile "app/CMakeLists.txt" "$cmakeBody"
@@ -423,11 +416,15 @@ if( \${HAS_SOURCES} GREATER 0 )
     RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
   )
 
+  # target_include_directories( \${TARGET_TEST} PRIVATE \${PROJECT_SOURCE_DIR}/src \${PROJECT_SOURCE_DIR/include )
+  target_link_directories( \${TARGET_TEST} PRIVATE \${PROJECT_SOURCE_DIR}/lib )
   target_link_libraries( \${TARGET_TEST} PRIVATE $2 Catch2::Catch2 )
 
   add_test( NAME \${TARGET_TEST} COMMAND \${TARGET_TEST} )
 
 endif()
+
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
 )
 makeFile "test/CMakeLists.txt" "$cmakeBody"
@@ -446,11 +443,37 @@ doxygen_add_docs( docs
   WORKING_DIRECTORY
   "\${PROJECT_SOURCE_DIR}/include"
 )
+
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 EOF
 )
 makeFile "docs/CMakeLists.txt" "$cmakeBody"
 chmod ug+w "$(pwd)/docs/CMakeLists.txt"
 
+#cmake helper
+cmakeBody=$(cat <<EOF
+set( BLU "$blu" CACHE STRING "AnsiBlue" )
+set( RED "$red" CACHE STRING "AnsiRed" )
+set( MAG "$mag" CACHE STRING "AnsiMagenta" )
+set( CYN "$cyn" CACHE STRING "AnsiCyan" )
+set( YLW "$ylw" CACHE STRING "AnsiYellow" )
+set( WHT "$wht" CACHE STRING "AnsiWhite" )
+set( BLK "$blk" CACHE STRING "AnsiBlack" )
+set( RST "$rst" CACHE STRING "AnsiReset" )
+
+if( NOT WIN32 )
+  function( colourized MESSAGE COL )
+    message( "\${COL}\${MESSAGE}\${RST}" )
+  endfunction()
+else()
+  message( "Colourized message not supported on windows" )
+  function( colourized MESSAGE COL )
+    message( "\${MESSAGE}" )
+  endfunction()
+endif()
+EOF
+)
+makeFile "cmake/colourized.cmake" "$cmakeBody"
 
 
 #call cmake w/ ninja build sys
