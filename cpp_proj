@@ -266,6 +266,7 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options (-fdiagnostics-color=always)
   set( OPTS -Wall -Wextra -Werror -Wctor-dtor-privacy -Wno-init-list-lifetime
             -Wnoexcept -Weffc++ -Wstrict-null-sentinel -Wold-style-cast
             -Woverloaded-virtual -Wsign-promo )
