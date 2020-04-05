@@ -374,7 +374,7 @@ if( \${HAS_SOURCES} GREATER 0 )
   )
 
   target_link_directories( \${TARGET_APP} PRIVATE \${PROJECT_SOURCE_DIR}/lib )
-  target_include_directories( \${TARGET_APP} PRIVATE \${PROJECT_SOURCE_DIR}/src \${PROJECT_SOURCE_DIR/include )
+  target_include_directories( \${TARGET_APP} PRIVATE \${PROJECT_SOURCE_DIR}/src \${PROJECT_SOURCE_DIR}/include )
   target_link_libraries( \${TARGET_APP} PRIVATE $2 )
 
 endif()
@@ -416,7 +416,7 @@ if( \${HAS_SOURCES} GREATER 0 )
     RUNTIME_OUTPUT_DIRECTORY "\${PROJECT_SOURCE_DIR}/bin"
   )
 
-  # target_include_directories( \${TARGET_TEST} PRIVATE \${PROJECT_SOURCE_DIR}/src \${PROJECT_SOURCE_DIR/include )
+  # target_include_directories( \${TARGET_TEST} PRIVATE \${PROJECT_SOURCE_DIR}/src \${PROJECT_SOURCE_DIR}/include )
   target_link_directories( \${TARGET_TEST} PRIVATE \${PROJECT_SOURCE_DIR}/lib )
   target_link_libraries( \${TARGET_TEST} PRIVATE $2 Catch2::Catch2 )
 
