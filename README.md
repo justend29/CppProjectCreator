@@ -1,6 +1,6 @@
 # cpp_proj
 
-DON'T USE THIS. Not a flexible tool, it's all stuffed into a single file, and the CMake generation isn't fantastic. Just a fun little activity, really.
+DON'T USE THIS for real projects. Not a flexible tool, stuffed 500 lines of bash into a single file, and the CMake generation isn't fantastic, nor is any CI/CD or package management included. Just a fun little activity, really.
 
 Generates the project structure and default files to run, build, and test C++ projects.
 
